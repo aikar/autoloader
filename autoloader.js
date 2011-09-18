@@ -48,12 +48,20 @@ function registerAutoloader(filePath, subpath) {
     
     if (stat.isDirectory()) {
       registerAutoloader(filePath, relPath + '/');
-      var indexFile = basePath + file + '/index.js';
-      if (path.existsSync(indexFile)) {
-        autoload(relPath + '.js', indexFile);
-      }
     } else {
-      autoload(relPath, fullPath);
+      var baseDirName = path.basename(basePath, '/');
+      if (subpath != '/' && baseDirName == path.basename(file,'.js')) {
+        autoload(subpath.substr(0,subpath.length-1) + '.js', fullPath);
+      } else if (file == 'index.js') {
+        if (subpath == '/') {
+          var newpath = '/' + path.basename(basePath);
+          autoload(newpath.substr(0,newpath.length-1) + '.js', fullPath);
+        } else {
+          autoload(subpath.substr(0,subpath.length-1) + '.js', fullPath);
+        }
+      } else {
+        autoload(relPath, fullPath);
+      }
     }
   });
 }
@@ -62,7 +70,7 @@ function autoload(file, fullPath) {
   if (extLoc != -1) {
     var ext = file.substr(extLoc);
     if (require.extensions[ext]) {
-      var varName = file.substr(1, extLoc);
+      var varName = file.substr(1, extLoc-1);
       varName = varName.replace(/[^a-z0-9]/gi,'_');
       defineGlobalGetter(varName, function() {
         return require(fullPath);
@@ -72,5 +80,3 @@ function autoload(file, fullPath) {
 }
 
 module.exports = registerAutoloader;
-
-

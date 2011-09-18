@@ -71,6 +71,6 @@ function autoload(file, fullPath) {
   }
 }
 
-module.exports registerAutoloader;
+module.exports = registerAutoloader;
 
 

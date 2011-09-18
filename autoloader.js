@@ -37,9 +37,9 @@ function defineGlobalGetter(name, fn) {
   });
 }
 
-function registerAutoloader(path, subpath) {
+function registerAutoloader(filePath, subpath) {
   subpath = subpath || '/';
-  var basePath = path + subpath;
+  var basePath = filePath + subpath;
   var files = fs.readdirSync(basePath);
   files.forEach(function(file) {
     var relPath  = subpath + file;
@@ -47,7 +47,7 @@ function registerAutoloader(path, subpath) {
     var stat     = fs.statSync(fullPath);
     
     if (stat.isDirectory()) {
-      registerAutoloader(path, relPath + '/');
+      registerAutoloader(filePath, relPath + '/');
       var indexFile = basePath + file + '/index.js';
       if (path.existsSync(indexFile)) {
         autoload(relPath + '.js', indexFile);

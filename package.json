@@ -2,7 +2,7 @@
   "author": "Aikar <aikar@aikar.co> (http://aikar.co)",
   "name": "autoloader",
   "description": "Autoloads JS Classes with Traceur",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "homepage": "http://aikar.co",
   "main": "autoloader.js",
   "engines": {

@@ -21,62 +21,111 @@ var
   fs = require("fs"),
   path = require("path");
 
+var getters = {};
+var gettersIndex = [];
+function defineGetter(obj, objpath, fn) {
+  obj = obj || global
+  var idx = gettersIndex.indexOf(obj);
+  if (idx == -1) {
+    idx = gettersIndex.push(obj)-1;
+  }
 
-// make sure its loaded first
-var fileCache = {};
-
-function defineGlobalGetter(name, fn) {
-  global.__defineGetter__(name, function() {    
-    delete global[name];
-    var val = fn();
-    // if the callback function set the global for us, don't overwrite it.
-    if (global[name] == undefined) {
-      global[name] = val;
+  if (!getters[idx]) {
+    getters[idx] = {};
+  }
+  var getp1 = getters[idx];
+  var getp2 = getters[idx];
+  
+  var tmpobj = obj;
+  objpath.forEach(function(val) {
+    if (typeof getp1[val] != 'object' || !getp1[val].children) {
+      getp1[val] = {
+        children: {},
+        create: function() {
+          return {};
+        }
+      }
     }
-    return global[name];
+    if (tmpobj) {
+      if (typeof tmpobj == 'object' && tmpobj[val] == 'object') {
+        tmpobj = tmpobj[val]
+      } else {
+        (function applyGetter(val, currentp, currentobj) {
+          currentobj.__defineGetter__(val, function() {    
+            delete currentobj[val];
+            var ret = currentp.create(currentobj, val);
+            // if the callback function set the var for us, don't overwrite it.
+            if (currentobj[val] == undefined) {
+              currentobj[val] = ret;
+            }
+            Object.keys(currentp.children).forEach(function(key) {
+              applyGetter(key, currentp.children[key], currentobj[val]);
+            });
+            //applyGetters(currentp.getters, currentobj[val]);
+            return currentobj[val];
+          });
+        })(val, getp1[val], tmpobj);
+      }
+    }
+    getp2 = getp1[val];
+    getp1 = getp1[val].children;
   });
+  // tree built, set creation method...
+  getp2.create = fn;
+  //console.dir(getters);
 }
 
-function registerAutoloader(filePath, subpath) {
-  subpath = subpath || '/';
-  var basePath = filePath + subpath;
-  var files = fs.readdirSync(basePath);
+
+function getobjbykey(obj, key) {
+  key.forEach(function(val) {
+    if (typeof obj[val] == "object") {
+      obj = obj[val]
+    }
+  });
+  return obj
+}
+function registerAutoloader(filePath, cb, objpath, obj) {
+  obj = obj || global;
+  objpath = objpath && objpath.slice(0) || [];
+  
+  var files = fs.readdirSync(filePath);
   files.forEach(function(file) {
-    var relPath  = subpath + file;
-    var fullPath = basePath + file;
+    var fullPath = filePath + '/' + file;
     var stat     = fs.statSync(fullPath);
-    
     if (stat.isDirectory()) {
-      registerAutoloader(filePath, relPath + '/');
+      registerAutoloader(fullPath, cb, objpath.concat(file), obj);
     } else {
-      var baseDirName = path.basename(basePath, '/');
-      if (subpath != '/' && baseDirName == path.basename(file,'.js')) {
-        autoload(subpath.substr(0,subpath.length-1) + '.js', fullPath);
+      var baseDirName = path.basename(filePath, '/');
+      if (baseDirName == path.basename(file,'.js')) {
+        autoload(obj, objpath, fullPath, cb)
       } else if (file == 'index.js') {
-        if (subpath == '/') {
-          var newpath = '/' + path.basename(basePath);
-          autoload(newpath.substr(0,newpath.length-1) + '.js', fullPath);
-        } else {
-          autoload(subpath.substr(0,subpath.length-1) + '.js', fullPath);
-        }
+        autoload(obj, objpath, fullPath, cb)
       } else {
-        autoload(relPath, fullPath);
+        var extLoc = fullPath.lastIndexOf('.');
+        if (extLoc != -1) {
+          var ext = file.substr(extLoc);
+          if (require.extensions[ext]) {
+            autoload(obj, objpath.concat(file), fullPath, cb)
+          }
+        }
       }
     }
   });
+  return obj;
 }
-function autoload(file, fullPath) {
-  var extLoc = file.lastIndexOf('.');
-  if (extLoc != -1) {
-    var ext = file.substr(extLoc);
-    if (require.extensions[ext]) {
-      var varName = file.substr(1, extLoc-1);
-      varName = varName.replace(/[^a-z0-9]/gi,'_');
-      defineGlobalGetter(varName, function() {
-        return require(fullPath);
-      });
+function autoload(obj, objpath, fullPath, cb) {
+  var load = function(obj, key) {
+    var module = null;
+    if (typeof cb == 'function') {
+      module = cb(fullPath, objpath.join('.'), obj, key);
     }
+    if (!module) {
+      console.error("Requiring:", fullPath)
+      module = require(fullPath);
+    }
+    return module;
   }
+  defineGetter(obj, objpath, load);
 }
 
 module.exports = registerAutoloader;

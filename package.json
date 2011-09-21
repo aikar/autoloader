@@ -1,8 +1,8 @@
 {
   "author": "Aikar <aikar@aikar.co> (http://aikar.co)",
   "name": "autoloader",
-  "description": "Autoloads JS Classes with Traceur",
-  "version": "1.0.0",
+  "description": "Autoloads JS Files (designed for Joose)",
+  "version": "1.0.1",
   "homepage": "http://aikar.co",
   "main": "autoloader.js",
   "engines": {

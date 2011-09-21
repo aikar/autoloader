@@ -61,7 +61,6 @@ function defineGetter(obj, objpath, fn) {
             Object.keys(currentp.children).forEach(function(key) {
               applyGetter(key, currentp.children[key], currentobj[val]);
             });
-            //applyGetters(currentp.getters, currentobj[val]);
             return currentobj[val];
           });
         })(val, getp1[val], tmpobj);
@@ -72,7 +71,6 @@ function defineGetter(obj, objpath, fn) {
   });
   // tree built, set creation method...
   getp2.create = fn;
-  //console.dir(getters);
 }
 
 
@@ -101,26 +99,27 @@ function registerAutoloader(filePath, cb, objpath, obj) {
       } else if (file == 'index.js') {
         autoload(obj, objpath, fullPath, cb)
       } else {
-        var extLoc = fullPath.lastIndexOf('.');
+        var extLoc = file.lastIndexOf('.');
         if (extLoc != -1) {
           var ext = file.substr(extLoc);
           if (require.extensions[ext]) {
-            autoload(obj, objpath.concat(file), fullPath, cb)
+            autoload(obj, objpath.concat(path.basename(file,ext)), fullPath, cb)
           }
         }
       }
+      
     }
   });
   return obj;
 }
 function autoload(obj, objpath, fullPath, cb) {
+  //console.log("AUTOLOAD", objpath, fullPath)
   var load = function(obj, key) {
     var module = null;
     if (typeof cb == 'function') {
       module = cb(fullPath, objpath.join('.'), obj, key);
     }
     if (!module) {
-      console.error("Requiring:", fullPath)
       module = require(fullPath);
     }
     return module;

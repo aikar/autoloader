@@ -46,7 +46,7 @@ function defineGetter(obj, objpath, fn) {
         }
       }
     }
-    if (tmpobj) {
+    if (tmpobj && !tmpobj.__lookupGetter__(val)) {
       if (typeof tmpobj == 'object' && tmpobj[val] == 'object') {
         tmpobj = tmpobj[val]
       } else {
@@ -64,7 +64,10 @@ function defineGetter(obj, objpath, fn) {
             return currentobj[val];
           });
         })(val, getp1[val], tmpobj);
+        tmpobj = null;
       }
+    } else {
+      tmpobj = null
     }
     getp2 = getp1[val];
     getp1 = getp1[val].children;

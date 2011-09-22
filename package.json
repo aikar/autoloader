@@ -2,7 +2,7 @@
   "author": "Aikar <aikar@aikar.co> (http://aikar.co)",
   "name": "autoloader",
   "description": "Autoloads JS Files (designed for Joose)",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "http://aikar.co",
   "main": "autoloader.js",
   "engines": {

@@ -23,8 +23,9 @@ var
 
 var getters = {};
 var gettersIndex = [];
-function defineGetter(obj, objpath, fn) {
-  obj = obj || global
+var nameIndex = {};
+var fileIndex = {};
+function getIndex(obj) {
   var idx = gettersIndex.indexOf(obj);
   if (idx == -1) {
     idx = gettersIndex.push(obj)-1;
@@ -32,28 +33,48 @@ function defineGetter(obj, objpath, fn) {
 
   if (!getters[idx]) {
     getters[idx] = {};
+    nameIndex[idx] = {};
+    fileIndex[idx] = {};
   }
+  return idx;
+}
+function defineGetter(obj, objpath, fn, fullPath) {
+  obj = obj || global
+  var idx = getIndex(obj);
+  
   var getp1 = getters[idx];
   var getp2 = getters[idx];
   
   var tmpobj = obj;
+  var curnamearray = [];
   objpath.forEach(function(val) {
+    curnamearray.push(val)
+    var curname = curnamearray.join('.');
     if (typeof getp1[val] != 'object' || !getp1[val].children) {
-      getp1[val] = {
+      var self = getp1[val] = {
+        parent: getp2,
+        name: curname,
         children: {},
+        getter: function() {
+          if (self.parent && self.parent.getter) {
+            self.parent.getter();
+            return self.getter()
+          }
+          return undefined;
+        },
         create: function() {
           return {};
         }
       }
+      nameIndex[idx][curname] = getp1[val];
     }
-    if (tmpobj && !tmpobj.__lookupGetter__(val)) {
-      if (typeof tmpobj == 'object' && tmpobj[val] == 'object') {
-        tmpobj = tmpobj[val]
-      } else {
+    if (typeof tmpobj == 'object' && tmpobj && !tmpobj.__lookupGetter__(val)) {
+      if (tmpobj[val] === undefined) {
         (function applyGetter(val, currentp, currentobj) {
-          currentobj.__defineGetter__(val, function() {    
+          currentp.getter = function () {
             delete currentobj[val];
             var ret = currentp.create(currentobj, val);
+            //console.error("getter executed", val, Object.keys(ret))
             // if the callback function set the var for us, don't overwrite it.
             if (currentobj[val] == undefined) {
               currentobj[val] = ret;
@@ -61,10 +82,17 @@ function defineGetter(obj, objpath, fn) {
             Object.keys(currentp.children).forEach(function(key) {
               applyGetter(key, currentp.children[key], currentobj[val]);
             });
+            currentp.getter = function() {
+              return currentobj[val];
+            };
+            //console.error("returning", Object.keys(currentobj[val]));
             return currentobj[val];
-          });
+          };
+          currentobj.__defineGetter__(val, currentp.getter);
         })(val, getp1[val], tmpobj);
         tmpobj = null;
+      } else {
+        tmpobj = tmpobj[val]
       }
     } else {
       tmpobj = null
@@ -74,6 +102,7 @@ function defineGetter(obj, objpath, fn) {
   });
   // tree built, set creation method...
   getp2.create = fn;
+  fileIndex[idx][fullPath] = getp2;
 }
 
 
@@ -127,7 +156,27 @@ function autoload(obj, objpath, fullPath, cb) {
     }
     return module;
   }
-  defineGetter(obj, objpath, load);
+  defineGetter(obj, objpath, load, fullPath);
 }
 
-module.exports = registerAutoloader;
+module.exports = {
+  autoload: registerAutoloader,
+  loadByName: function(name, obj) {
+    obj = obj || global;
+    var idx = getIndex(obj);
+    var p = nameIndex[idx][name]
+    if (p) {
+      return p.getter();
+    }
+    return null;
+  },
+  loadByFile: function(file, obj) {
+    obj = obj || global;
+    var idx = getIndex(obj);
+    var p = fileIndex[idx][file]
+    if (p) {
+      return p.getter();
+    }
+    return null;
+  }
+}

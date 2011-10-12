@@ -50,7 +50,7 @@ loading the module would print to screen:
     Foo
     Foo.Bar
     
-ALL MODULES MUST RETURN AN OBJECT/FUNCTION. It can not return Scalar Values!
+ALL MODULES MUST RETURN AN OBJECT/FUNCTION. It can not return Primitive Values!
 
 ## Custom Loaders
 If you pass a function as the 2nd argument, autoloader will execute that before

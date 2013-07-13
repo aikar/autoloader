@@ -27,7 +27,7 @@ File contents:
 
 Foo.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo")
         Foo.Bar();
     };

@@ -34,7 +34,7 @@ Foo.js:
 
 Bar.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo.Bar")
     };
 

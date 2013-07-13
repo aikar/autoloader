@@ -27,14 +27,14 @@ File contents:
 
 Foo.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo")
         Foo.Bar();
     };
 
 Bar.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo.Bar")
     };
 

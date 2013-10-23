@@ -1,4 +1,4 @@
-//  Copyright (c) 2011 Daniel Ennis <aikar@aikar.co>
+//  Copyright (c) 2013 Daniel Ennis <aikar@aikar.co>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -17,166 +17,73 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-var 
-  fs = require("fs"),
-  path = require("path");
-
-var getters = {};
-var gettersIndex = [];
-var nameIndex = {};
-var fileIndex = {};
-function getIndex(obj) {
-  var idx = gettersIndex.indexOf(obj);
-  if (idx == -1) {
-    idx = gettersIndex.push(obj)-1;
-  }
-
-  if (!getters[idx]) {
-    getters[idx] = {};
-    nameIndex[idx] = {};
-    fileIndex[idx] = {};
-  }
-  return idx;
-}
-function defineGetter(obj, objpath, fn, fullPath) {
-  obj = obj || global
-  var idx = getIndex(obj);
-  
-  var getp1 = getters[idx];
-  var getp2 = getters[idx];
-  
-  var tmpobj = obj;
-  var curnamearray = [];
-  objpath.forEach(function(val) {
-    curnamearray.push(val)
-    var curname = curnamearray.join('.');
-    if (typeof getp1[val] != 'object' || !getp1[val].children) {
-      var self = getp1[val] = {
-        parent: getp2,
-        name: curname,
-        children: {},
-        getter: function() {
-          if (self.parent && self.parent.getter) {
-            self.parent.getter();
-            return self.getter()
-          }
-          return undefined;
-        },
-        create: function() {
-          return {};
-        }
-      }
-      nameIndex[idx][curname] = getp1[val];
-    }
-    if (typeof tmpobj == 'object' && tmpobj && !tmpobj.__lookupGetter__(val)) {
-      if (tmpobj[val] === undefined) {
-        (function applyGetter(val, currentp, currentobj) {
-          currentp.getter = function () {
-            delete currentobj[val];
-            var ret = currentp.create(currentobj, val);
-            //console.error("getter executed", val, Object.keys(ret))
-            // if the callback function set the var for us, don't overwrite it.
-            if (currentobj[val] == undefined) {
-              currentobj[val] = ret;
-            }
-            Object.keys(currentp.children).forEach(function(key) {
-              applyGetter(key, currentp.children[key], currentobj[val]);
-            });
-            currentp.getter = function() {
-              return currentobj[val];
-            };
-            //console.error("returning", Object.keys(currentobj[val]));
-            return currentobj[val];
-          };
-          currentobj.__defineGetter__(val, currentp.getter);
-        })(val, getp1[val], tmpobj);
-        tmpobj = null;
-      } else {
-        tmpobj = tmpobj[val]
-      }
-    } else {
-      tmpobj = null
-    }
-    getp2 = getp1[val];
-    getp1 = getp1[val].children;
-  });
-  // tree built, set creation method...
-  getp2.create = fn;
-  fileIndex[idx][fullPath] = getp2;
-}
-
-
-function getobjbykey(obj, key) {
-  key.forEach(function(val) {
-    if (typeof obj[val] == "object") {
-      obj = obj[val]
-    }
-  });
-  return obj
-}
-function registerAutoloader(filePath, cb, objpath, obj) {
+var path = require("path");
+var dirMap = [];
+var indexMap = [];
+function registerAutoloader(filePath, obj) {
   obj = obj || global;
-  objpath = objpath && objpath.slice(0) || [];
-  
-  var files = fs.readdirSync(filePath);
-  files.forEach(function(file) {
-    var fullPath = filePath + '/' + file;
-    var stat     = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      registerAutoloader(fullPath, cb, objpath.concat(file), obj);
-    } else {
-      var baseDirName = path.basename(filePath, '/');
-      if (baseDirName == path.basename(file,'.js')) {
-        autoload(obj, objpath, fullPath, cb)
-      } else if (file == 'index.js') {
-        autoload(obj, objpath, fullPath, cb)
+  var index = indexMap.indexOf(obj);
+  if (index == -1) {
+    index = indexMap.length;
+    indexMap.push(obj);
+    obj.__proto__ = forwarder(obj.__proto__, loadModule);
+    dirMap[index] = [];
+  }
+  dirMap[index].push(filePath);
+
+  function loadModule(obj, key) {
+    var file = key.replace(/_/,"/");
+    var dirs = dirMap[index];
+    for (var i = 0; i < dirs.length; i++) {
+      var dir = dirs[i];
+      if (typeof dir == 'function') {
+        var result = dir(key, obj);
+        if (result !== undefined) {
+          return result;
+        }
       } else {
-        var extLoc = file.lastIndexOf('.');
-        if (extLoc != -1) {
-          var ext = file.substr(extLoc);
-          if (require.extensions[ext]) {
-            autoload(obj, objpath.concat(path.basename(file,ext)), fullPath, cb)
+        try {
+          return require(path.join(dir, file));
+        } catch (ignored) { }
+      }
+    }
+  }
+
+}
+module.exports = registerAutoloader;
+
+function forwarder(target, cb){
+  var traps = {
+    getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor.bind(null, target),
+    getOwnPropertyNames: Object.getOwnPropertyNames.bind(null, target),
+    getPropertyNames: Object.getOwnPropertyNames.bind(null, target),
+    keys: Object.keys.bind(null, target),
+    defineProperty: Object.defineProperty.bind(null, target),
+    get: function(r,k){ return target[k] },
+    set: function(r,k,v){ target[k] = v; return true },
+    has: function(k){ return k in target },
+    hasOwn: function(k){ return {}.hasOwnProperty.call(target, k) },
+    delete: function(k){ delete target[k]; return true },
+    enumerate: function(){ var i=0,k=[]; for (k[i++] in target); return k }
+  };
+
+  return Proxy.create(Proxy.create({
+    get: function(r, trap){
+      return function(a, b){
+        if (trap === 'get' && b != 'v8debug' && !target[b]) {
+          var result = cb(a, b);
+          if (typeof result == 'undefined') {
+            throw new ReferenceError(b + ' is not defined');
+          } else {
+            return result;
           }
         }
+
+        if (trap in traps) {
+          return traps[trap].apply(target, arguments);
+        }
       }
-      
     }
-  });
-  return obj;
-}
-function autoload(obj, objpath, fullPath, cb) {
-  //console.log("AUTOLOAD", objpath, fullPath)
-  var load = function(obj, key) {
-    var module = null;
-    if (typeof cb == 'function') {
-      module = cb(fullPath, objpath.join('.'), obj, key);
-    }
-    if (!module) {
-      module = require(fullPath);
-    }
-    return module;
-  }
-  defineGetter(obj, objpath, load, fullPath);
+  }), Object.getPrototypeOf(target));
 }
 
-module.exports = {
-  autoload: registerAutoloader,
-  loadByName: function(name, obj) {
-    obj = obj || global;
-    var idx = getIndex(obj);
-    var p = nameIndex[idx][name]
-    if (p) {
-      return p.getter();
-    }
-    return null;
-  },
-  loadByFile: function(file, obj) {
-    obj = obj || global;
-    var idx = getIndex(obj);
-    var p = fileIndex[idx][file]
-    if (p) {
-      return p.getter();
-    }
-    return null;
-  }
-}

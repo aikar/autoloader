@@ -8,71 +8,71 @@ define the autoloader to your codebase, and use the names relative to the files.
 ie lib/Foo/Bar/Baz.js when you load 'lib/' makes Foo.Bar.Baz
 require('./lib/Foo/Bar/Baz.js') automatically and return the value.
 
+## 2.0 Requirements
+
+2.0 Drastically changes how this project works. It now requires --harmony under Node 0.10, and the usage
+ scenarios have completely changed. It now will replace underscores as seperators such as Foo_Bar instead
+ of Foo.Bar.
+
+ It also does not have to do any directory scanning and setting up tons of getters, simple Proxy on global catches unreferenced variables!
+
 ## Install
 
 Install with npm install autoloader
 
 ## Usage
 
+Run node with --harmony
+
 Folder structure:
 
     /lib/
         Foo/
-            Foo.js
             Bar.js
+        Foo.js
     test.js
     package.json (main: 'test.js')
     
 File contents:
 
-Foo.js:
+lib/Foo.js:
 
     module.export = function() {
         console.log("Foo")
-        Foo.Bar();
+        Foo_Bar();
     };
 
-Bar.js:
+lib/Foo/Bar.js:
 
     module.export = function() {
-        console.log("Foo.Bar")
+        console.log("Foo_Bar")
     };
 
 
 test.js:
     
-    require('autoloader').autoload(__dirname + '/lib')
+    require('autoloader')(__dirname + '/lib')
     Foo();
 
 
-loading the module would print to screen:
+Loading the module would print to screen:
 
     Foo
-    Foo.Bar
-    
-ALL MODULES MUST RETURN AN OBJECT/FUNCTION. It can not return Primitive Values!
+    Foo_Bar
 
 ## Custom Loaders
-If you pass a function as the 2nd argument, autoloader will execute that before
-requiring the file with the following arguments:
+If you pass a function as the 1st argument, autoloader will execute that instead of
+loading by directory, allowing you to control what is returned.
+Callback signature
 
-    function (fullPath, className, object, key) { }
-    
-fullPath will be the full path to the module file to load, classname would
-be 'Foo.Bar.Baz' for example, object would be the object to add a new value
-to, and key is the key of object to assign the response.
+    function (name, object) { }
 
-so if you load 'Foo', object is global, and key is Foo, likewise if you load
-Foo.Bar, object is Foo and key is 'Bar'.
-You can then do what ever magic it is you need to do, and optionally assign it yourself.
-
-If you don't assign it yourself, simply return the value and autoloader will
-assign it for you.
+You will need to assign the value yourself if you wish to not have your loader fire every access.
 
 ## License
 The MIT License
 
-  Copyright (c) 2011 Daniel Ennis <aikar@aikar.co>
+  Copyright (c) 2013 Daniel Ennis <aikar@aikar.co>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,11 +1,10 @@
 ## About
 Autoloads JS files based on name when the class is needed.
-This is designed to be used with Joose classes in the "Foo.Bar.Baz" format
 
 This module removes the needs of using require() all over your files. Simply
 define the autoloader to your codebase, and use the names relative to the files.
 
-ie lib/Foo/Bar/Baz.js when you load 'lib/' makes Foo.Bar.Baz
+ie lib/Foo/Bar/Baz.js when you load 'lib/' makes Foo_Bar_Baz
 require('./lib/Foo/Bar/Baz.js') automatically and return the value.
 
 ## 2.0 Requirements
@@ -59,6 +58,12 @@ Loading the module would print to screen:
 
     Foo
     Foo_Bar
+
+You may optionally pass an object as the 2nd parameter and the autoloader will bind to that object instead of global.
+So consider:
+
+    global.App = require('autoloader')(__dirname + '/lib', require('./myapp'));
+    new App.Foo_Bar();
 
 ## Custom Loaders
 If you pass a function as the 1st argument, autoloader will execute that instead of

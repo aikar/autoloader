@@ -8,6 +8,10 @@
   "engines": {
     "node": ">=0.10"
   },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/aikar/autoloader.git"
+  },
   "scripts": {
     "start":"node autoloader.js"
   },

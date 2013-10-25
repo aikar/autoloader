@@ -26,12 +26,14 @@ function registerAutoloader(filePath, obj) {
   if (index == -1) {
     index = indexMap.length;
     indexMap.push(obj);
-    obj.__proto__ = forwarder(obj.__proto__, loadModule);
+
+    obj.__proto__ = proxy(obj.__proto__, loadModule);
+
     dirMap[index] = [];
   }
   dirMap[index].push(filePath);
 
-  function loadModule(obj, key) {
+  function loadModule(key) {
     var file = key.replace(/_/,"/");
     var dirs = dirMap[index];
     for (var i = 0; i < dirs.length; i++) {
@@ -52,7 +54,7 @@ function registerAutoloader(filePath, obj) {
 }
 module.exports = registerAutoloader;
 
-function forwarder(target, cb){
+function proxy(target, cb){
   var traps = {
     getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor.bind(null, target),
     getOwnPropertyNames: Object.getOwnPropertyNames.bind(null, target),
@@ -67,23 +69,21 @@ function forwarder(target, cb){
     enumerate: function(){ var i=0,k=[]; for (k[i++] in target); return k }
   };
 
-  return Proxy.create(Proxy.create({
-    get: function(r, trap){
-      return function(a, b){
-        if (trap === 'get' && b != 'v8debug' && !target[b]) {
-          var result = cb(a, b);
-          if (typeof result == 'undefined') {
-            throw new ReferenceError(b + ' is not defined');
-          } else {
-            return result;
-          }
-        }
-
-        if (trap in traps) {
-          return traps[trap].apply(target, arguments);
+  return Proxy.create({
+    get: function(r, key){
+      if (key != 'v8debug' && target[key] == undefined) {
+        var result = cb(key);
+        if (typeof result == 'undefined') {
+          throw new ReferenceError(key + ' is not defined');
+        } else {
+          return result;
         }
       }
+
+      if (key in traps) {
+        return traps[key].apply(target, arguments);
+      }
     }
-  }), Object.getPrototypeOf(target));
+  }, Object.getPrototypeOf(target));
 }
 

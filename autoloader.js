@@ -26,9 +26,7 @@ function registerAutoloader(filePath, obj) {
   if (index == -1) {
     index = indexMap.length;
     indexMap.push(obj);
-
     obj.__proto__ = proxy(obj.__proto__, loadModule);
-
     dirMap[index] = [];
   }
   dirMap[index].push(filePath);
@@ -44,44 +42,32 @@ function registerAutoloader(filePath, obj) {
           return result;
         }
       } else {
+        var mod = path.join(dir, file);
         try {
-          return require(path.join(dir, file));
-        } catch (ignored) { }
+          return require(require.resolve(mod));
+        } catch (ignored) {}
       }
     }
   }
-
 }
 module.exports = registerAutoloader;
 
 function proxy(target, cb){
-  var traps = {
+  return Proxy.create({
+    getPropertyDescriptor: Object.getOwnPropertyDescriptor.bind(null, target),
     getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor.bind(null, target),
     getOwnPropertyNames: Object.getOwnPropertyNames.bind(null, target),
     getPropertyNames: Object.getOwnPropertyNames.bind(null, target),
     keys: Object.keys.bind(null, target),
     defineProperty: Object.defineProperty.bind(null, target),
-    get: function(r,k){ return target[k] },
     set: function(r,k,v){ target[k] = v; return true },
     has: function(k){ return k in target },
     hasOwn: function(k){ return {}.hasOwnProperty.call(target, k) },
     delete: function(k){ delete target[k]; return true },
-    enumerate: function(){ var i=0,k=[]; for (k[i++] in target); return k }
-  };
-
-  return Proxy.create({
+    enumerate: function(){ var i=0,k=[]; for (k[i++] in target); return k },
     get: function(r, key){
       if (key != 'v8debug' && target[key] == undefined) {
-        var result = cb(key);
-        if (typeof result == 'undefined') {
-          throw new ReferenceError(key + ' is not defined');
-        } else {
-          return result;
-        }
-      }
-
-      if (key in traps) {
-        return traps[key].apply(target, arguments);
+        return cb(key);
       }
     }
   }, Object.getPrototypeOf(target));

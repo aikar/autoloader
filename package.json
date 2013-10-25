@@ -2,7 +2,7 @@
   "author": "Aikar <aikar@aikar.co> (http://aikar.co)",
   "name": "autoloader",
   "description": "Autoloads JS Files",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "homepage": "http://aikar.co",
   "main": "autoloader.js",
   "engines": {

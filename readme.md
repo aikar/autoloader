@@ -36,14 +36,14 @@ File contents:
 
 lib/Foo.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo")
         Foo_Bar();
     };
 
 lib/Foo/Bar.js:
 
-    module.export = function() {
+    module.exports = function() {
         console.log("Foo_Bar")
     };
 

@@ -20,8 +20,7 @@ require('./lib/Foo/Bar/Baz.js') automatically and return the value.
 Install with npm install autoloader
 
 ## Usage
-
-Run node with --harmony
+Run node with --harmony-proxies
 
 Folder structure:
 

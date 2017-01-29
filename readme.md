@@ -1,4 +1,6 @@
 ## About
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/aikar/autoloader.svg)](https://greenkeeper.io/)
 Autoloads JS files based on name when the class is needed.
 
 This module removes the needs of using require() all over your files. Simply
